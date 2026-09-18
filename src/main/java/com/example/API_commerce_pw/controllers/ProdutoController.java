@@ -3,6 +3,8 @@ package com.example.API_commerce_pw.controllers;
 import com.example.API_commerce_pw.dtos.ProdutoRequestDTO;
 import com.example.API_commerce_pw.models.Produto;
 import com.example.API_commerce_pw.services.ProdutoService;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -13,6 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/produtos")
+@Tag(name = "Catálogo de Produtos", description = "Rotas para gerenciamento dos produtos do e-commerce")
 public class ProdutoController {
 
     @Autowired
