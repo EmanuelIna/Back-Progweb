@@ -1,5 +1,6 @@
 package com.example.API_commerce_pw.controllers;
 
+import com.example.API_commerce_pw.dtos.LoginRequestDTO;
 import com.example.API_commerce_pw.dtos.UsuarioRequestDTO;
 import com.example.API_commerce_pw.dtos.UsuarioResponseDTO;
 import com.example.API_commerce_pw.services.UsuarioService;
@@ -28,5 +29,16 @@ public class UsuarioController {
     public ResponseEntity<List<UsuarioResponseDTO>> listarUsuarios() {
         List<UsuarioResponseDTO> usuarios = usuarioService.buscarTodos();
         return ResponseEntity.ok(usuarios);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> autenticarUsuario(@Valid @RequestBody LoginRequestDTO dadosLogin) {
+        try {
+            UsuarioResponseDTO usuarioLogado = usuarioService.fazerLogin(dadosLogin);
+            return ResponseEntity.ok(usuarioLogado); // Retorna 200 OK com os dados
+        } catch (RuntimeException e) {
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        }
     }
 } 

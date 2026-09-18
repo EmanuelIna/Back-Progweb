@@ -1,5 +1,6 @@
 package com.example.API_commerce_pw.services;
 
+import com.example.API_commerce_pw.dtos.LoginRequestDTO;
 import com.example.API_commerce_pw.dtos.UsuarioRequestDTO;
 import com.example.API_commerce_pw.dtos.UsuarioResponseDTO;
 import com.example.API_commerce_pw.models.Usuario;
@@ -50,6 +51,19 @@ public class UsuarioService {
         dto.setEmail(usuario.getEmail());
         dto.setPerfil(usuario.getPerfil());
         return dto;
+    }
+
+    public UsuarioResponseDTO fazerLogin(LoginRequestDTO dadosLogin) {
+        Usuario usuarioEncontrado = listaDeUsuarios.stream()
+                .filter(u -> u.getEmail().equals(dadosLogin.getEmail()))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
+        if (!usuarioEncontrado.getSenha().equals(dadosLogin.getSenha())) {
+            throw new RuntimeException("Senha incorreta");
+        }
+
+        return converterParaResponseDTO(usuarioEncontrado);
     }
 
     //Perfil de admin criado para testes
