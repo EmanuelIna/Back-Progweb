@@ -1,83 +1,33 @@
 package com.example.API_commerce_pw.services;
-
-import com.example.API_commerce_pw.dtos.LoginRequestDTO;
-import com.example.API_commerce_pw.dtos.UsuarioRequestDTO;
-import com.example.API_commerce_pw.dtos.UsuarioResponseDTO;
-import com.example.API_commerce_pw.models.Usuario;
+import com.example.API_commerce_pw.dtos.*;
+import com.example.API_commerce_pw.models.*;
 import com.example.API_commerce_pw.models.enums.PerfilUsuario;
-
-import jakarta.annotation.PostConstruct;
-
+import com.example.API_commerce_pw.repositories.UsuarioRepository;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-@Service
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import lombok.RequiredArgsConstructor;
+import java.util.*;
+@Service @RequiredArgsConstructor @Transactional
 public class UsuarioService {
-
-    private List<Usuario> listaDeUsuarios = new ArrayList<>();
-
-    public UsuarioResponseDTO cadastrarUsuario(UsuarioRequestDTO dadosRecebidos) {
-        // 1. Transforma o DTO em Model
-        Usuario novoUsuario = new Usuario();
-        novoUsuario.setIdUsuario(UUID.randomUUID().toString());
-        novoUsuario.setNome(dadosRecebidos.getNome());
-        novoUsuario.setEmail(dadosRecebidos.getEmail());
-        novoUsuario.setSenha(dadosRecebidos.getSenha());
-        
-        
-        novoUsuario.setPerfil(PerfilUsuario.CLIENTE);
-
-    
-        listaDeUsuarios.add(novoUsuario);
-
-
-        return converterParaResponseDTO(novoUsuario);
-    }
-
-    public List<UsuarioResponseDTO> buscarTodos() {
-        return listaDeUsuarios.stream()
-                .map(this::converterParaResponseDTO)
-                .collect(Collectors.toList());
-    }
-
-    private UsuarioResponseDTO converterParaResponseDTO(Usuario usuario) {
-        UsuarioResponseDTO dto = new UsuarioResponseDTO();
-        dto.setIdUsuario(usuario.getIdUsuario());
-        dto.setNome(usuario.getNome());
-        dto.setEmail(usuario.getEmail());
-        dto.setPerfil(usuario.getPerfil());
-        return dto;
-    }
-
-    public UsuarioResponseDTO fazerLogin(LoginRequestDTO dadosLogin) {
-        Usuario usuarioEncontrado = listaDeUsuarios.stream()
-                .filter(u -> u.getEmail().equals(dadosLogin.getEmail()))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
-
-        if (!usuarioEncontrado.getSenha().equals(dadosLogin.getSenha())) {
-            throw new RuntimeException("Senha incorreta");
-        }
-
-        return converterParaResponseDTO(usuarioEncontrado);
-    }
-
-    //Perfil de admin criado para testes
-    @PostConstruct
-    public void criarAdminPadrao() {
-        Usuario admin = new Usuario();
-        admin.setIdUsuario(UUID.randomUUID().toString());
-        admin.setNome("Administrador do Sistema");
-        admin.setEmail("admin@commerce.com");
-        admin.setSenha("senha-admin-123");
-        admin.setPerfil(PerfilUsuario.ADMIN); 
-
-        listaDeUsuarios.add(admin);
-        
-        System.out.println("Usuário ADMIN criado com sucesso para testes!");
-    }
+ private final UsuarioRepository repository;
+ private final PasswordEncoder passwords;
+ public UsuarioResponseDTO cadastrarUsuario(UsuarioRequestDTO d) {
+  if(d.getSenha().getBytes(java.nio.charset.StandardCharsets.UTF_8).length>72) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Senha deve conter no máximo 72 bytes UTF-8");
+  String email=d.getEmail().trim().toLowerCase(Locale.ROOT);
+  if(repository.existsByEmail(email)) throw new ResponseStatusException(HttpStatus.CONFLICT,"Email já cadastrado");
+  Usuario u=new Usuario(null,d.getNome(),email,passwords.encode(d.getSenha()),PerfilUsuario.CLIENTE);
+  return dto(repository.save(u));
+ }
+ @Transactional(readOnly=true) public List<UsuarioResponseDTO> buscarTodos() { return repository.findAll().stream().map(this::dto).toList(); }
+ @Transactional(readOnly=true) public UsuarioResponseDTO fazerLogin(LoginRequestDTO d) {
+  if(d.getSenha().getBytes(java.nio.charset.StandardCharsets.UTF_8).length>72) throw invalid();
+  Usuario u=repository.findByEmail(d.getEmail().trim().toLowerCase(Locale.ROOT)).orElseThrow(this::invalid);
+  if(!passwords.matches(d.getSenha(),u.getSenha())) throw invalid();
+  return dto(u);
+ }
+ private ResponseStatusException invalid() { return new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Credenciais inválidas"); }
+ private UsuarioResponseDTO dto(Usuario u) { var d=new UsuarioResponseDTO(); d.setIdUsuario(u.getIdUsuario()); d.setNome(u.getNome()); d.setEmail(u.getEmail()); d.setPerfil(u.getPerfil()); return d; }
 }
